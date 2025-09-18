@@ -22,7 +22,3 @@ Propulse is a web application designed to simplify the process of creating and s
 - **Styling/UI:** TailwindCSS 
 - **ORM:** Prisma  
 
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
