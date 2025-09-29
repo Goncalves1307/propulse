@@ -5,7 +5,7 @@ const cors = require("cors");
 
 
 
-const PORT = process.env.PORT || 4050;
+const PORT = process.env.PORT || 4000;
 
 const app = express()
 
@@ -13,6 +13,13 @@ const app = express()
 app.use(cors());
 app.use(express.json());
 
+//Rotas
+const authRoutes = require('./routes/auth');
+
+
+app.use("/api/auth", authRoutes);
+
+
 app.listen(process.env.PORT, () => {
-  console.log(`Example app listening on port ${PORT}`)
+  console.log(`Servidor a correr em http://localhost:${PORT}`);
 })
