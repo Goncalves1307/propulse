@@ -15,9 +15,11 @@ app.use(express.json());
 
 //Rotas
 const authRoutes = require('./routes/auth');
+const companyRoutes = require('./routes/company')
 
 
 app.use("/api/auth", authRoutes);
+app.use('/api/company',companyRoutes)
 
 
 app.listen(process.env.PORT, () => {

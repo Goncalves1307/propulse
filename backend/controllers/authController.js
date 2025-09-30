@@ -33,7 +33,7 @@ const signUp = async (req,res) =>{
                 return res.status(409).json({ message: 'Username already exists' })
             }
 
-                return res.status(409).json({ message: 'Dados duplicados' })
+                return res.status(409).json({ message: 'Duplicated Data' })
         }
         res.status(500).json({message:'Error while creating user'})
 

@@ -12,7 +12,7 @@ function validate(schema) {
       }
       return res.status(422).json({
         code: "VALIDATION_ERROR",
-        message: "Dados inválidos",
+        message: "Invalid Data",
         fields: formatted
       })
     }
