@@ -130,5 +130,19 @@ const getCompanies = async (req, res) => {
   }
 };
 
+const getCompaniesById = async(req,res)=>{
+  const id = req.params.id;
+
+  try{
+    const company = await prisma.company.findUnique({
+      where: id,
+      company: { deletedAt: null }
+    });
+
+  }
+}
+
+
+
 
 module.exports = { createCompany, getCompanies };
