@@ -1,3 +1,26 @@
+# MacOS
+.DS_Store
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Node (root ou qualquer serviço)
+node_modules/
+
+# Ambiente
+.env
+.env.*
+
+# Prisma
+prisma/migrations/
+backend/generated/prisma
+
+# Backend específico
 backend/node_modules/
 backend/.env
-backend/generated/prisma
+
+# Build / output
+dist/
+build/
