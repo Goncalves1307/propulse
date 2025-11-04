@@ -16,10 +16,12 @@ app.use(express.json());
 //Rotas
 const authRoutes = require('./routes/auth');
 const companyRoutes = require('./routes/company')
+const clientRoutes = require('./routes/client')
 
 
 app.use("/api/auth", authRoutes);
 app.use('/api/company',companyRoutes)
+app.use('/api/client',clientRoutes)
 
 
 

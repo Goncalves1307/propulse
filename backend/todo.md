@@ -1,7 +1,6 @@
 # 🧭 Propulse Backend TODO
 
 ## 🧩 Em desenvolvimento
-// TODO:Endpoint `getCompanyById`
 // TODO:Controlador e rotas de Clientes
 // TODO:Controlador e rotas de Orçamentos 
 // TODO:Middleware global de erros
