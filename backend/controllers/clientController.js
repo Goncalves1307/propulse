@@ -80,4 +80,82 @@ const getClients = async (req, res) => {
   }
 };
 
-module.exports = { createClient, getClients };
+
+const getClientsId = async (req, res) => {
+  try {
+    const companyId = req.params.companyId;
+    const clientId = req.params.clientId
+
+
+    const client = await prisma.client.findFirst({
+      where: { companyId, id: clientId },
+      select: {
+        id: true,
+        name: true,
+        legalName: true,
+        companyId: true,
+        email: true,
+        taxId: true,
+        phone: true
+      }
+    });
+
+    if (!client) {
+      return res.status(404).json({
+        code: "NOT_FOUND",
+        message: "Clients not found."
+      });
+    }
+
+    return res.status(200).json(client);
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      code: "INTERNAL_ERROR",
+      message: "Error while fetching client."
+    });
+  }
+};
+
+const updateClient = async (req, res) => {
+  const { name, legalName, email, taxId, phone } = req.body;
+
+  try {
+    const companyId = req.params.companyId;
+    const clientId = req.params.clientId;
+
+
+    const exists = await prisma.client.findFirst({
+      where: { id: clientId, companyId }
+    });
+
+    if (!exists) {
+      return res.status(404).json({
+        code: "NOT_FOUND",
+        message: "Client not found."
+      });
+    }
+
+    const updated = await prisma.client.update({
+      where: { id: clientId },
+      data: {
+        name,
+        legalName,
+        email,
+        taxId,
+        phone
+      }
+    });
+
+    return res.status(200).json(updated);
+
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      code: "INTERNAL_ERROR",
+      message: "Error while updating client."
+    });
+  }
+};
+
+module.exports = { createClient, getClients , getClientsId,updateClient};
