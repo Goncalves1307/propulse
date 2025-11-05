@@ -158,4 +158,23 @@ const updateClient = async (req, res) => {
   }
 };
 
-module.exports = { createClient, getClients , getClientsId,updateClient};
+
+const deleteClient = async(req,res)=>{
+  const clientId = req.params.clientId;
+
+  try{
+    const removedClient = await prisma.client.delete({
+      where:{id: clientId}
+    })
+
+    return res.status(200).json({message:"Client removed with sucess",removedClient}) 
+  }catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      code: "INTERNAL_ERROR",
+      message: "Error while updating client."
+    });
+  }
+}
+
+module.exports = { createClient, getClients , getClientsId,updateClient,deleteClient};
