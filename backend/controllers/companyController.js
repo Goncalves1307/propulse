@@ -78,9 +78,8 @@ try{
 }
 }
 
-// controllers/companyController.js
+
 const getCompanies = async (req, res) => {
-  // paginação básica por querystring ?page=1&limit=20
   const page  = Math.max(parseInt(req.query.page ?? "1", 10), 1);
   const limit = Math.min(Math.max(parseInt(req.query.limit ?? "20", 10), 1), 100);
   const skip  = (page - 1) * limit;
@@ -102,7 +101,6 @@ const getCompanies = async (req, res) => {
       take: limit,
     });
 
-    // 2) mapear para o shape que o frontend quer (company + role do user)
     const items = memberships.map((m) => ({
       id: m.company.id,
       name: m.company.name,
@@ -111,7 +109,6 @@ const getCompanies = async (req, res) => {
       role: m.role,
     }));
 
-    // 3) total para paginação (opcional, útil para UI)
     const total = await prisma.companyUser.count({
       where: {
         userId: req.user.id,
