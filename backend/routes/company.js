@@ -6,6 +6,7 @@ const router = express.Router();
 const authMiddleware = require('../middleware/authMiddleware')
 const membershipGuard = require('../middleware/membershipGuard')
 
+
 router.post("/create", authMiddleware,validate(companyCreateSchema), createCompany)
 router.get('/',authMiddleware,getCompanies)
 router.get('/:id', authMiddleware, membershipGuard, getCompaniesById);

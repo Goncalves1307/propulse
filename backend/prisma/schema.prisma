@@ -94,18 +94,18 @@ model Quote {
   createdById String
 
   quoteNumber String    @unique
-  status      String
-  issueDate   DateTime
+  status      String 
+  issueDate   DateTime @default(now())
   validUntil  DateTime?
   sentAt      DateTime?
   acceptedAt  DateTime?
   rejectedAt  DateTime?
 
   currency       String
-  subtotal       Decimal
+  subtotal       Decimal @default(0)
   discountAmount Decimal?
   taxAmount      Decimal?
-  total          Decimal
+  total          Decimal @default(0)
 
   description String?
 
