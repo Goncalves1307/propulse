@@ -1,6 +1,14 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
+
+const parseIssueDate = (value) => {
+  if (!value) return new Date();
+  const date = new Date(value);
+  if (isNaN(date.getTime())) throw new Error("INVALID_ISSUE_DATE");
+  return date;
+};
+
 const createQuote = async (req, res) => {
   const { companyId, clientId } = req.params;
   const userId = req.user.id;
@@ -8,15 +16,21 @@ const createQuote = async (req, res) => {
   const {
     quoteNumber,
     currency,
-    items,
+    items = [],
     description,
-    discountAmount,
-    taxAmount,
+    discountAmount = 0,
+    taxAmount = 0,
+    issueDate, // <-- novo
   } = req.body;
 
   try {
-    const subtotal = items.reduce((acc, item) => acc + (item.unitPrice * item.quantity), 0);
-    const total = subtotal - (discountAmount || 0) + (taxAmount || 0);
+    const parsedIssueDate = parseIssueDate(issueDate);
+
+    const subtotal = items.reduce(
+      (acc, it) => acc + it.unitPrice * it.quantity,
+      0
+    );
+    const total = subtotal - discountAmount + taxAmount;
 
     const result = await prisma.$transaction(async (tx) => {
       const quote = await tx.quote.create({
@@ -32,36 +46,53 @@ const createQuote = async (req, res) => {
           taxAmount,
           total,
           description,
+          issueDate: parsedIssueDate, // <-- guardar
         },
       });
 
-      const itemsData = items.map((item, index) => ({
-        quoteId: quote.id,
-        position: index + 1,
-        title: item.title,
-        description: item.description || "",
-        quantity: item.quantity,
-        unit: item.unit,
-        unitPrice: item.unitPrice,
-        discountPct: item.discountPct || 0,
-        taxRate: item.taxRate || 0,
-        lineTotal:
-          item.quantity * item.unitPrice *
-          (1 - (item.discountPct || 0) / 100) *
-          (1 + (item.taxRate || 0) / 100),
-      }));
+      if (items.length) {
+        const itemsData = items.map((item, i) => ({
+          quoteId: quote.id,
+          position: i + 1,
+          title: item.title,
+          description: item.description || "",
+          quantity: item.quantity,
+          unit: item.unit,
+          unitPrice: item.unitPrice,
+          discountPct: item.discountPct || 0,
+          taxRate: item.taxRate || 0,
+          lineTotal:
+            item.quantity *
+            item.unitPrice *
+            (1 - (item.discountPct || 0) / 100) *
+            (1 + (item.taxRate || 0) / 100),
+        }));
+        await tx.quoteItem.createMany({ data: itemsData });
+      }
 
-      await tx.quoteItem.createMany({ data: itemsData });
-
-      return { quote, items: itemsData };
+      return quote;
     });
 
-    res.status(201).json(result);
+    return res.status(201).json(result);
   } catch (err) {
+    if (err.message === "INVALID_ISSUE_DATE") {
+      return res.status(422).json({
+        code: "VALIDATION_ERROR",
+        message: "Invalid Data",
+        fields: { issueDate: "Invalid ISO date" },
+      });
+    }
+    if (err.code === 'P2002') {
+      const target = err.meta?.target || [];
+      if (target.includes('quoteNumber')) {
+        return res.status(409).json({ code: "DUPLICATE", message: 'Quote Number already exists!', fields: { quoteNumber: "Already exists" } })
+      }
+    }
     console.error(err);
-    res.status(500).json({ message: "Error while creating quote" });
+    return res.status(500).json({ message: "Error while creating quote" });
   }
 };
+
 
 const getQuotesByCompany = async (req, res) => {
   const { companyId } = req.params;

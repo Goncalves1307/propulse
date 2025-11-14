@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "Quote" ADD COLUMN     "generatedText" TEXT,
+ADD COLUMN     "lastGeneratedAt" TIMESTAMP(3),
+ALTER COLUMN "issueDate" SET DEFAULT CURRENT_TIMESTAMP,
+ALTER COLUMN "subtotal" SET DEFAULT 0,
+ALTER COLUMN "total" SET DEFAULT 0;

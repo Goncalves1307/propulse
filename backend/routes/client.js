@@ -2,17 +2,17 @@ const { createClient, getClients, getClientsId, updateClient, deleteClient } = r
 const express = require("express");
 const router = express.Router();
 const validate = require("../middleware/validate");
-const clientCreateSchema = require("../validators/client");
+const {clientCreateSchema} = require("../validators/client");
 const {createQuote,getQuotesByCompany,getQuotesByID,updateQuote, deleteQuote} = require('../controllers/quoteController')
 const authMiddleware = require("../middleware/authMiddleware");
 const membershipGuard = require("../middleware/membershipGuard");
-
+const {quoteCreateSchema} = require('../validators/quote')
 
 router.use("/:companyId", authMiddleware, membershipGuard);
 
 
 //quote
-router.post('/:companyId/:clientId/quote',authMiddleware,membershipGuard,createQuote)
+router.post('/:companyId/:clientId/quote',authMiddleware,membershipGuard,validate(quoteCreateSchema),createQuote)
 router.get('/:companyId/quotes',authMiddleware,membershipGuard,getQuotesByCompany)
 router.get('/:companyId/:quoteId',authMiddleware,membershipGuard,getQuotesByID)
 router.put('/:companyId/:quoteId',authMiddleware,membershipGuard,updateQuote)

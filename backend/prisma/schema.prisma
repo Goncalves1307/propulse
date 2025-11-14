@@ -114,6 +114,9 @@ model Quote {
 
   items QuoteItem[]
 
+  generatedText  String?  
+  lastGeneratedAt DateTime?
+
   @@index([companyId])
   @@index([clientId])
   @@index([createdById])

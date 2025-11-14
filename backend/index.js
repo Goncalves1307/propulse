@@ -22,7 +22,7 @@ const clientRoutes = require('./routes/client')
 app.use("/api/auth", authRoutes);
 app.use('/api/company',companyRoutes)
 app.use('/api/client',clientRoutes)
-
+app.use("/api/company/:companyId/client/:clientId/quote/:quoteId",require("./routes/ai"));
 
 
 app.listen(PORT, () => {
