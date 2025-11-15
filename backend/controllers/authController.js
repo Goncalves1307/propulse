@@ -63,7 +63,7 @@ const login = async(req,res)=>{
             process.env.JWT_SECRET,
             { expiresIn: "7d" }
         );
-
+        throw new Error("Falhei");
         res.status(200).json({token})
     }catch(err){
         res.status(500).json({ message: 'Unexpected error during login' });

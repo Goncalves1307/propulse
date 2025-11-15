@@ -2,28 +2,30 @@
 const express = require('express')
 const dotEnv = require('dotenv').config()
 const cors = require("cors");
-
-
+const errorHandler = require("./middleware/errorHandler");
+const requestId = require("./middleware/requestId");
 
 const PORT = process.env.PORT || 4000;
 
 const app = express()
 
-//Middlewares
+// Middlewares de base
 app.use(cors());
 app.use(express.json());
+app.use(requestId);
 
-//Rotas
+// Rotas
 const authRoutes = require('./routes/auth');
 const companyRoutes = require('./routes/company')
 const clientRoutes = require('./routes/client')
 
-
 app.use("/api/auth", authRoutes);
-app.use('/api/company',companyRoutes)
-app.use('/api/client',clientRoutes)
-app.use("/api/company/:companyId/client/:clientId/quote/:quoteId",require("./routes/ai"));
+app.use('/api/company', companyRoutes);
+app.use('/api/client', clientRoutes);
+app.use("/api/company/:companyId/client/:clientId/quote/:quoteId", require("./routes/ai"));
 
+// Error handler — SEMPRE O ÚLTIMO
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   if (!process.env.JWT_SECRET) { throw new Error("JWT_SECRET não definido") }
