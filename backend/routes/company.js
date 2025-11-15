@@ -9,5 +9,5 @@ const membershipGuard = require('../middleware/membershipGuard')
 
 router.post("/create", authMiddleware,validate(companyCreateSchema), createCompany)
 router.get('/',authMiddleware,getCompanies)
-router.get('/:id', authMiddleware, membershipGuard, getCompaniesById);
+router.get('/:companyId', authMiddleware, membershipGuard, getCompaniesById);
 module.exports = router;

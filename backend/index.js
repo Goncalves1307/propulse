@@ -24,7 +24,7 @@ app.use('/api/company', companyRoutes);
 app.use('/api/client', clientRoutes);
 app.use("/api/company/:companyId/client/:clientId/quote/:quoteId", require("./routes/ai"));
 
-// Error handler — SEMPRE O ÚLTIMO
+
 app.use(errorHandler);
 
 app.listen(PORT, () => {

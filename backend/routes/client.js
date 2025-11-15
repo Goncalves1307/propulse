@@ -2,7 +2,7 @@ const { createClient, getClients, getClientsId, updateClient, deleteClient } = r
 const express = require("express");
 const router = express.Router();
 const validate = require("../middleware/validate");
-const {clientCreateSchema} = require("../validators/client");
+const clientCreateSchema = require("../validators/client");
 const {createQuote,getQuotesByCompany,getQuotesByID,updateQuote, deleteQuote} = require('../controllers/quoteController')
 const authMiddleware = require("../middleware/authMiddleware");
 const membershipGuard = require("../middleware/membershipGuard");
@@ -23,8 +23,8 @@ router.delete('/:companyId/:quoteId',authMiddleware,membershipGuard,deleteQuote)
 //client
 router.post("/:companyId/create", validate(clientCreateSchema), createClient);
 router.get("/:companyId", getClients);
-router.get("/:companyId/:clientId", getClientsId);
-router.put("/:companyId/:clientId", updateClient);
+router.get("/:companyId/client/:clientId", getClientsId);
+router.put("/:companyId/client/:clientId", updateClient);
 router.delete("/:companyId/:clientId", deleteClient);
 
 

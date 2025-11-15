@@ -20,7 +20,7 @@ const createQuote = async (req, res) => {
     description,
     discountAmount = 0,
     taxAmount = 0,
-    issueDate, // <-- novo
+    issueDate, 
   } = req.body;
 
   try {
@@ -46,7 +46,7 @@ const createQuote = async (req, res) => {
           taxAmount,
           total,
           description,
-          issueDate: parsedIssueDate, // <-- guardar
+          issueDate: parsedIssueDate, 
         },
       });
 
