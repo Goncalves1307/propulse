@@ -167,5 +167,48 @@ const getCompaniesById = async (req, res) => {
 };
 
 
+const deleteCompany = async(req,res)=>{
+  const {companyId} = req.params;
 
-module.exports = { createCompany, getCompanies , getCompaniesById};
+  try{const company = await prisma.company.findFirst({
+    where:{id:companyId}
+  })
+
+    if (!company) {
+      return res.status(404).json({
+        code: "NOT_FOUND",
+        message: "Company not found",
+      });
+    }
+      const result = await prisma.$transaction(async (tx) => {
+      const quotes = await tx.quote.findMany({ where: { companyId }, select: { id: true } });
+      const quoteIds = quotes.map(q => q.id);
+
+      
+      if (quoteIds.length) {
+        await tx.quoteItem.deleteMany({ where: { quoteId: { in: quoteIds } } });
+      }
+
+      await tx.quote.deleteMany({ where: { companyId } });
+
+      await tx.client.deleteMany({ where: { companyId } });
+
+      await tx.companyUser.deleteMany({ where: { companyId } });
+
+      const deletedCompany = await tx.company.delete({ where: { id: companyId } });
+      return deletedCompany;
+    });
+    return res.status(200).json({
+      message: "Company deleted successfully.",
+      company: result,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Error while deleting company" });
+  }
+
+}
+
+
+
+module.exports = { createCompany, getCompanies , getCompaniesById,deleteCompany};
