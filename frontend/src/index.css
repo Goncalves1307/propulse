@@ -3,3 +3,24 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior:smooth;
+  }
+
+}
+
+/* Dot-bounce loader fallback (works without tailwind.config extension) */
+@keyframes dot {
+  0%, 40%, 100% { transform: translateY(0); opacity: 0.85; }
+  20% { transform: translateY(-6px); opacity: 1; }
+}
+
+.animate-dot {
+  animation: dot 0.6s infinite ease-in-out;
+  animation-fill-mode: both;
+}
+
+.loader > .animate-dot:nth-child(2) { animation-delay: 0.15s; }
+.loader > .animate-dot:nth-child(3) { animation-delay: 0.3s; }
