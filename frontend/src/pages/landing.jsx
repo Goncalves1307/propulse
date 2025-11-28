@@ -46,7 +46,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
               <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 ">
-                  Cria Orçamentos em Segundos, Não em Horas
+                  Cria orçamentos em segundos, não em horas
               </h1>
               <p className="text-lg text-gray-600 mb-8">
                 Gera e envia orçamentos profissionais sem esforço.
