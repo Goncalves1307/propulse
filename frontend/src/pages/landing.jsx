@@ -5,6 +5,7 @@ import React from "react";
   Clock,
   Star,
   ChevronRight,
+  Calendar,
   Shield,
   Users,
    BarChart,
@@ -163,7 +164,67 @@ export default function LandingPage() {
           </div>
         </div>
       </div>
-      
+      {/* Footer */}
+      <footer className="bg-gray-900 text-gray-300 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-4 gap-8">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <BriefcaseBusiness className="h-6 w-6 text-emerald-600" />
+                <span className="text-xl font-bold text-white">Propulse</span>
+              </div>
+              <p className="text-gray-400">
+                A solução definitiva para criação e gestão de orçamentos profissionais.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">Produto</h3>
+              <ul className="space-y-2">
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Funcionalidades
+                  </a>
+                </li>
+                <li>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Segurança
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">Empresa</h3>
+              <ul className="space-y-2">
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Sobre Nós
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-white mb-4">Ajuda</h3>
+              <ul className="space-y-2">
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    FAQ
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Contactos
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
+            <p>&copy; 2025 Propulse. Todos os direitos reservados.</p>
+          </div>
+        </div>
+      </footer>
     </div>
     );
     }
