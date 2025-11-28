@@ -66,7 +66,7 @@ export default function LandingPage() {
               <img
                 src="/budget.jpg"
                 alt="Dashboard"
-                className="rounded-2xl shadow-2xl w-[450px] h-[650px] object-cover justify-self-end "
+                className="rounded-2xl shadow-2xl w-[450px] h-[700px] object-cover justify-self-end "
               />
               <div className="absolute -bottom-6 -left-6 bg-white p-4 rounded-lg shadow-lg flex items-center gap-3 ml-30">
                 <div className="bg-primary-100 p-2 rounded-full">
@@ -82,7 +82,7 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
-        <div className="flex justify-center mt-16">
+        <div className="flex justify-center mt-3">
           <a
             href="#features"
             className="animate-bounce flex flex-col items-center text-sm text-gray-500 dark:text-gray-400"
@@ -181,7 +181,7 @@ export default function LandingPage() {
               <h3 className="text-lg font-semibold text-white mb-4">Produto</h3>
               <ul className="space-y-2">
                 <li>
-                  <a href="#" className="hover:text-white transition-colors">
+                  <a href="#features" className="hover:text-white transition-colors">
                     Funcionalidades
                   </a>
                 </li>
