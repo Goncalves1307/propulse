@@ -1,18 +1,20 @@
-const bcrypt = require('bcrypt')
+const bcrypt = require('bcrypt');
 const jwt = require("jsonwebtoken");
 const { PrismaClient } = require("@prisma/client");
-const companyCreateSchema = require('../validators/company');
 const prisma = new PrismaClient();
 const saltRounds = 13;
+const z = require("zod");
 
-
+// --------------------
+// Utils
+// --------------------
 const generateSlug = async (name) => {
   const base = name
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // remove acentos
-    .replace(/\s+/g, "-") // espaços por hífens
-    .replace(/[^a-z0-9-]/g, ""); // remove símbolos
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
 
   let slug = base;
   let count = 1;
@@ -25,71 +27,129 @@ const generateSlug = async (name) => {
   return slug;
 };
 
+// --------------------
+// Auth helpers
+// --------------------
+const assertCompanyAdmin = async (companyId, userId) => {
+  const company = await prisma.company.findFirst({
+    where: { id: companyId, deletedAt: null },
+    select: { ownerId: true },
+  });
 
-const createCompany = async (req,res)=>{
-    const {name,description,location,phone} = req.body;
-    const user_id = req.user.id
-    const slug = await generateSlug(name);
+  if (!company) {
+    const error = new Error("Company not found");
+    error.status = 404;
+    throw error;
+  }
 
+  // owner é sempre admin
+  if (company.ownerId === userId) {
+    return;
+  }
 
-try{
-    const result = await prisma.$transaction(async (tx) => {
-        const company = await tx.company.create({
-            data: {
-                name,
-                ownerId: user_id,
-                slug,
-                description,
-                location,
-                phone
-            }
-            
-        })
-        await tx.companyUser.create({
-            data: {
-                companyId: company.id,
-                userId: user_id,
-                role: "ADMIN"
-            }
-        })
-        return company
-    })
-        return res.status(201).json({
-            id: result.id,
-            name: result.name,
-            slug: result.slug,
-            createdAt: result.createdAt,
-            ownerId: result.ownerId,
-})
-}catch(err){
-            if (err.code === 'P2002') {
-            const target = err.meta?.target || [];
+  const membership = await prisma.companyUser.findFirst({
+    where: {
+      companyId,
+      userId,
+      role: "ADMIN",
+    },
+  });
 
-            if (target.includes('name')) {
-                return res.status(409).json({ code: "DUPLICATE", message: 'Name already exists!', fields: { name: "Already exists" } })
-            }
-            if (target.includes('slug')) {
-                return res.status(409).json({ code: "DUPLICATE", message: 'Slug already exists!', fields: { slug: "Already exists" } })
-            }
-                return res.status(409).json({code: "DUPLICATE",message: "Duplicated data",fields: { _general: "Duplicated value" }})
-        }
-    res.status(500).json({ message: 'Error while creating company' })
-    console.log(err)
-}
-}
+  if (!membership) {
+    const error = new Error("Forbidden");
+    error.status = 403;
+    throw error;
+  }
+};
 
+// --------------------
+// Zod schemas
+// --------------------
+const memberCreateSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .email("Invalid email"),
+  role: z
+    .enum(["USER", "ADMIN"])
+    .optional()
+    .default("USER"),
+});
 
-const getCompanies = async (req, res) => {
-  const page  = Math.max(parseInt(req.query.page ?? "1", 10), 1);
-  const limit = Math.min(Math.max(parseInt(req.query.limit ?? "20", 10), 1), 100);
-  const skip  = (page - 1) * limit;
+const memberRoleUpdateSchema = z.object({
+  role: z.enum(["USER", "ADMIN"]),
+});
+
+// --------------------
+// CREATE COMPANY
+// --------------------
+const createCompany = async (req, res) => {
+  const {
+    name,
+    description,
+    address,
+    city,
+    postalCode,
+    country,
+    phone,
+    email,
+    website,
+    taxId
+  } = req.body;
+
+  const user_id = req.user.id;
+  const slug = await generateSlug(name);
 
   try {
-    // 1) buscar memberships do user + dados essenciais da company
+    const result = await prisma.$transaction(async (tx) => {
+      const company = await tx.company.create({
+        data: {
+          name,
+          ownerId: user_id,
+          slug,
+          description,
+          address,
+          city,
+          postalCode,
+          country,
+          phone,
+          email,
+          website,
+          taxId
+        }
+      });
+
+      await tx.companyUser.create({
+        data: {
+          companyId: company.id,
+          userId: user_id,
+          role: "ADMIN"
+        }
+      });
+
+      return company;
+    });
+
+    return res.status(201).json(result);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: "Error while creating company" });
+  }
+};
+
+// --------------------
+// LIST COMPANIES
+// --------------------
+const getCompanies = async (req, res) => {
+  const page = Math.max(parseInt(req.query.page ?? "1", 10), 1);
+  const limit = Math.min(Math.max(parseInt(req.query.limit ?? "20", 10), 1), 100);
+  const skip = (page - 1) * limit;
+
+  try {
     const memberships = await prisma.companyUser.findMany({
       where: {
         userId: req.user.id,
-        company: { deletedAt: null }, // soft delete filter
+        company: { deletedAt: null },
       },
       include: {
         company: {
@@ -128,6 +188,9 @@ const getCompanies = async (req, res) => {
   }
 };
 
+// --------------------
+// GET BY ID
+// --------------------
 const getCompaniesById = async (req, res) => {
   try {
     const companyId = req.params.id;
@@ -139,8 +202,14 @@ const getCompaniesById = async (req, res) => {
         name: true,
         slug: true,
         description: true,
-        location: true,
+        address: true,
+        city: true,
+        postalCode: true,
+        country: true,
         phone: true,
+        email: true,
+        website: true,
+        taxId: true,
         createdAt: true,
         ownerId: true,
       },
@@ -153,12 +222,9 @@ const getCompaniesById = async (req, res) => {
       });
     }
 
-    return res.status(200).json({
-      ...company,
-      role: req.membership.role,
-    });
+    return res.status(200).json(company);
   } catch (err) {
-    console.log(err);
+    console.error(err);
     return res.status(500).json({
       code: "INTERNAL_ERROR",
       message: "Error while fetching company",
@@ -166,13 +232,16 @@ const getCompaniesById = async (req, res) => {
   }
 };
 
+// --------------------
+// DELETE COMPANY
+// --------------------
+const deleteCompany = async (req, res) => {
+  const { companyId } = req.params;
 
-const deleteCompany = async(req,res)=>{
-  const {companyId} = req.params;
-
-  try{const company = await prisma.company.findFirst({
-    where:{id:companyId}
-  })
+  try {
+    const company = await prisma.company.findFirst({
+      where: { id: companyId },
+    });
 
     if (!company) {
       return res.status(404).json({
@@ -180,24 +249,28 @@ const deleteCompany = async(req,res)=>{
         message: "Company not found",
       });
     }
-      const result = await prisma.$transaction(async (tx) => {
-      const quotes = await tx.quote.findMany({ where: { companyId }, select: { id: true } });
-      const quoteIds = quotes.map(q => q.id);
 
-      
+    const result = await prisma.$transaction(async (tx) => {
+      const quotes = await tx.quote.findMany({
+        where: { companyId },
+        select: { id: true },
+      });
+
+      const quoteIds = quotes.map((q) => q.id);
+
       if (quoteIds.length) {
-        await tx.quoteItem.deleteMany({ where: { quoteId: { in: quoteIds } } });
+        await tx.quoteItem.deleteMany({
+          where: { quoteId: { in: quoteIds } },
+        });
       }
 
       await tx.quote.deleteMany({ where: { companyId } });
-
       await tx.client.deleteMany({ where: { companyId } });
-
       await tx.companyUser.deleteMany({ where: { companyId } });
 
-      const deletedCompany = await tx.company.delete({ where: { id: companyId } });
-      return deletedCompany;
+      return await tx.company.delete({ where: { id: companyId } });
     });
+
     return res.status(200).json({
       message: "Company deleted successfully.",
       company: result,
@@ -206,9 +279,378 @@ const deleteCompany = async(req,res)=>{
     console.error(err);
     return res.status(500).json({ message: "Error while deleting company" });
   }
+};
 
-}
+// --------------------
+// UPDATE COMPANY
+// --------------------
+const updateCompany = async (req, res) => {
+  const { companyId } = req.params;
 
+  const {
+    name,
+    description,
+    address,
+    city,
+    postalCode,
+    country,
+    phone,
+    email,
+    website,
+    taxId
+  } = req.body;
 
+  const userId = req.user.id;
 
-module.exports = { createCompany, getCompanies , getCompaniesById,deleteCompany};
+  try {
+    const company = await prisma.company.findFirst({
+      where: { id: companyId, deletedAt: null }
+    });
+
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    if (company.ownerId !== userId) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    let slug = company.slug;
+    if (name && name !== company.name) {
+      slug = await generateSlug(name);
+    }
+
+    const updatedCompany = await prisma.company.update({
+      where: { id: companyId },
+      data: {
+        name,
+        description,
+        address,
+        city,
+        postalCode,
+        country,
+        phone,
+        email,
+        website,
+        taxId,
+        slug
+      }
+    });
+
+    return res.status(200).json(updatedCompany);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      message: "Error while updating company"
+    });
+  }
+};
+
+// --------------------
+// MEMBERS: LIST
+// --------------------
+const getCompanyMembers = async (req, res) => {
+  const { companyId } = req.params;
+  const userId = req.user.id;
+
+  try {
+    await assertCompanyAdmin(companyId, userId);
+
+    const memberships = await prisma.companyUser.findMany({
+      where: { companyId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const items = memberships.map((m) => ({
+      userId: m.user.id,
+      name: m.user.name,
+      email: m.user.email,
+      phone: m.user.phone,
+      role: m.role,
+      createdAt: m.createdAt,
+    }));
+
+    return res.status(200).json({ items });
+  } catch (err) {
+    console.error(err);
+    if (err.status) {
+      return res.status(err.status).json({ message: err.message });
+    }
+    return res
+      .status(500)
+      .json({ message: "Error while fetching company members" });
+  }
+};
+
+// --------------------
+// MEMBERS: CREATE
+// --------------------
+const addCompanyMember = async (req, res) => {
+  const { companyId } = req.params;
+  const currentUserId = req.user.id;
+
+  try {
+    await assertCompanyAdmin(companyId, currentUserId);
+
+    const parsed = memberCreateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation error",
+        errors: parsed.error.flatten(),
+      });
+    }
+
+    const { email, role } = parsed.data;
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found with this email",
+      });
+    }
+
+    const existing = await prisma.companyUser.findFirst({
+      where: {
+        companyId,
+        userId: user.id,
+      },
+    });
+
+    if (existing) {
+      return res.status(409).json({
+        message: "User is already a member of this company",
+      });
+    }
+
+    const membership = await prisma.companyUser.create({
+      data: {
+        companyId,
+        userId: user.id,
+        role,
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+      },
+    });
+
+    return res.status(201).json({
+      userId: membership.user.id,
+      name: membership.user.name,
+      email: membership.user.email,
+      phone: membership.user.phone,
+      role: membership.role,
+      createdAt: membership.createdAt,
+    });
+  } catch (err) {
+    console.error(err);
+    if (err.status) {
+      return res.status(err.status).json({ message: err.message });
+    }
+    return res
+      .status(500)
+      .json({ message: "Error while adding company member" });
+  }
+};
+
+// --------------------
+// MEMBERS: UPDATE ROLE
+// --------------------
+const updateCompanyMemberRole = async (req, res) => {
+  const { companyId, userId } = req.params;
+  const currentUserId = req.user.id;
+
+  try {
+    await assertCompanyAdmin(companyId, currentUserId);
+
+    const parsed = memberRoleUpdateSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation error",
+        errors: parsed.error.flatten(),
+      });
+    }
+
+    const { role } = parsed.data;
+
+    const company = await prisma.company.findFirst({
+      where: { id: companyId, deletedAt: null },
+      select: { ownerId: true },
+    });
+
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    if (company.ownerId === userId) {
+      return res.status(400).json({
+        message: "Cannot change role of company owner",
+      });
+    }
+
+    const membership = await prisma.companyUser.findUnique({
+      where: {
+        companyId_userId: {
+          companyId,
+          userId,
+        },
+      },
+    });
+
+    if (!membership) {
+      return res.status(404).json({
+        message: "Membership not found",
+      });
+    }
+
+    // impedir remover o último ADMIN
+    if (membership.role === "ADMIN" && role === "USER") {
+      const adminCount = await prisma.companyUser.count({
+        where: {
+          companyId,
+          role: "ADMIN",
+        },
+      });
+
+      if (adminCount <= 1) {
+        return res.status(409).json({
+          message: "Cannot downgrade the last admin of the company",
+        });
+      }
+    }
+
+    const updated = await prisma.companyUser.update({
+      where: {
+        companyId_userId: {
+          companyId,
+          userId,
+        },
+      },
+      data: {
+        role,
+      },
+    });
+
+    return res.status(200).json({
+      userId,
+      role: updated.role,
+    });
+  } catch (err) {
+    console.error(err);
+    if (err.status) {
+      return res.status(err.status).json({ message: err.message });
+    }
+    return res
+      .status(500)
+      .json({ message: "Error while updating member role" });
+  }
+};
+
+// --------------------
+// MEMBERS: DELETE
+// --------------------
+const removeCompanyMember = async (req, res) => {
+  const { companyId, userId } = req.params;
+  const currentUserId = req.user.id;
+
+  try {
+    await assertCompanyAdmin(companyId, currentUserId);
+
+    const company = await prisma.company.findFirst({
+      where: { id: companyId, deletedAt: null },
+      select: { ownerId: true },
+    });
+
+    if (!company) {
+      return res.status(404).json({ message: "Company not found" });
+    }
+
+    if (company.ownerId === userId) {
+      return res.status(400).json({
+        message: "Cannot remove the company owner",
+      });
+    }
+
+    const membership = await prisma.companyUser.findUnique({
+      where: {
+        companyId_userId: {
+          companyId,
+          userId,
+        },
+      },
+    });
+
+    if (!membership) {
+      return res.status(404).json({
+        message: "Membership not found",
+      });
+    }
+
+    // impedir remover o último ADMIN
+    if (membership.role === "ADMIN") {
+      const adminCount = await prisma.companyUser.count({
+        where: {
+          companyId,
+          role: "ADMIN",
+        },
+      });
+
+      if (adminCount <= 1) {
+        return res.status(409).json({
+          message: "Cannot remove the last admin of the company",
+        });
+      }
+    }
+
+    await prisma.companyUser.delete({
+      where: {
+        companyId_userId: {
+          companyId,
+          userId,
+        },
+      },
+    });
+
+    return res.status(200).json({ message: "Member removed successfully" });
+  } catch (err) {
+    console.error(err);
+    if (err.status) {
+      return res.status(err.status).json({ message: err.message });
+    }
+    return res
+      .status(500)
+      .json({ message: "Error while removing company member" });
+  }
+};
+
+// --------------------
+module.exports = {
+  createCompany,
+  getCompanies,
+  getCompaniesById,
+  deleteCompany,
+  updateCompany,
+  getCompanyMembers,
+  addCompanyMember,
+  updateCompanyMemberRole,
+  removeCompanyMember,
+};

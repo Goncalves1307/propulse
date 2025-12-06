@@ -7,7 +7,7 @@ const saltRounds = 13;
 
 const signUp = async (req,res) =>{
     //atribui os valores recebidos do request
-    const { username, email, password, role } = req.body;
+    const { name, email, password, phone } = req.body;
 
     //Encripta a password
     const password_hash = await bcrypt.hash(password,saltRounds);
@@ -15,10 +15,10 @@ const signUp = async (req,res) =>{
     try{
         await prisma.user.create({
             data:{
-                username: username,
+                name: name,
                 email: email,
                 passwordHash: password_hash,
-                role: role,
+                phone: phone,
             }
         })
         res.status(201).json({ message: "User created with success!" });
@@ -29,8 +29,8 @@ const signUp = async (req,res) =>{
             if (target.includes('email')) {
                 return res.status(409).json({ message: 'Email already exists' })
             }
-            if (target.includes('username')) {
-                return res.status(409).json({ message: 'Username already exists' })
+            if (target.includes('name')) {
+                return res.status(409).json({ message: 'Name already exists' })
             }
 
                 return res.status(409).json({ message: 'Duplicated Data' })
@@ -63,11 +63,38 @@ const login = async(req,res)=>{
             process.env.JWT_SECRET,
             { expiresIn: "7d" }
         );
-        res.status(200).json({token})
+        res.status(200).json({name: user.name, token})
     }catch(err){
         res.status(500).json({ message: 'Unexpected error during login' });
         console.log(err)
     }
 
 }
-module.exports = {signUp,login,};
+const me = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.json(user);
+  } catch (err) {
+    console.error("Error fetching current user:", err);
+    res.status(500).json({ message: "Error fetching current user" });
+  }
+};
+
+module.exports = {signUp,login,me};

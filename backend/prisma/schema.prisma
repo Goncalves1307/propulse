@@ -20,8 +20,9 @@ enum Role {
 
 model User {
   id            String        @id @default(uuid())
-  username      String        @unique
+  name          String        @unique
   email         String        @unique
+  phone         String?
   passwordHash  String
   role          Role          @default(USER)
   createdAt     DateTime      @default(now())
@@ -37,9 +38,17 @@ model Company {
   ownerId     String
   name        String        @unique
   slug        String        @unique
-  description String
-  location    String
+
+  description String?
+  address     String?
+  city        String?
+  postalCode  String?
+  country     String?
   phone       String
+  email       String?
+  website     String?
+  taxId       String?
+
   clients     Client[]
   members     CompanyUser[]
   quotes      Quote[]
