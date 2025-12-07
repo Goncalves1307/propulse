@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
-import API from '../.././api/axios';
-
+import { ArrowLeft, User, Building2, Mail, Phone, MapPin, Globe, FileText, Hash, Save, X, Briefcase } from 'lucide-react';
+import API from '../../api/axios';
 
 export default function ClientForm({ userId, client, companies, onSuccess, onCancel }) {
   const [formData, setFormData] = useState({
@@ -15,6 +14,7 @@ export default function ClientForm({ userId, client, companies, onSuccess, onCan
     state: client?.state || '',
     zipCode: client?.zipCode || '',
     country: client?.country || '',
+    taxId: client?.taxId || '',
     notes: client?.notes || '',
   });
   const [loading, setLoading] = useState(false);
@@ -32,7 +32,7 @@ export default function ClientForm({ userId, client, companies, onSuccess, onCan
       };
 
       if (client?.id) {
-        await API.put(`/clients/${client.id}`, payload);
+        await API.put(`/client/${formData.companyId}/client/${client.id}`, payload);
       } else {
         await API.post(`/client/${formData.companyId}/create`, payload);
       }
@@ -46,226 +46,280 @@ export default function ClientForm({ userId, client, companies, onSuccess, onCan
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (error) setError(null);
   };
 
+  const InputField = ({ icon: Icon, label, name, type = 'text', required = false, placeholder, colSpan = 1 }) => (
+    <div className={`group ${colSpan === 2 ? 'md:col-span-2' : ''}`}>
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+      <div className="relative">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors">
+          <Icon className="h-5 w-5" />
+        </div>
+        <input
+          type={type}
+          name={name}
+          value={formData[name]}
+          onChange={handleChange}
+          required={required}
+          placeholder={placeholder}
+          className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 outline-none"
+        />
+      </div>
+    </div>
+  );
+
+  const TextAreaField = ({ icon: Icon, label, name, placeholder, rows = 4 }) => (
+    <div className="group">
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        {label}
+      </label>
+      <div className="relative">
+        <div className="absolute left-3 top-3 text-gray-400 group-focus-within:text-emerald-500 transition-colors">
+          <Icon className="h-5 w-5" />
+        </div>
+        <textarea
+          name={name}
+          value={formData[name]}
+          onChange={handleChange}
+          rows={rows}
+          placeholder={placeholder}
+          className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 outline-none resize-none"
+        />
+      </div>
+    </div>
+  );
+
+  const SelectField = ({ icon: Icon, label, name, options, placeholder, required = false }) => (
+    <div className="group">
+      <label className="block text-sm font-medium text-gray-700 mb-2">
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+      </label>
+      <div className="relative">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors">
+          <Icon className="h-5 w-5" />
+        </div>
+        <select
+          name={name}
+          value={formData[name]}
+          onChange={handleChange}
+          required={required}
+          className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 outline-none appearance-none bg-white"
+        >
+          <option value="">{placeholder}</option>
+          {options.map(opt => (
+            <option key={opt.id} value={opt.id}>
+              {opt.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-5xl mx-auto">
+      {/* Back Button */}
       <button
         onClick={onCancel}
-        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
       >
         <ArrowLeft className="h-5 w-5" />
-        Back to Clients
+        <span className="font-medium">Back to Clients</span>
       </button>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-        <h2 className="text-2xl font-bold mb-6">
-          {client ? 'Edit Client' : 'Create Client'}
-        </h2>
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className='grid grid-cols-2 gap-4'>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Name *
-            </label>
-            <input
-              type="text"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              placeholder="John Doe"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Legal Name
-            </label>
-            <input
-              type="text"
-              name="legalName"
-              value={formData.legalName}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              placeholder="Johnathan Doe LLC"
-            />
-          </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email *
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="john@example.com"
-              />
+      <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-emerald-500 to-teal-500 px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+                <User className="h-7 w-7 text-white" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-white">
+                  {client ? 'Edit Client' : 'Create New Client'}
+                </h2>
+                <p className="text-emerald-50 text-sm mt-1">
+                  {client ? 'Update client information' : 'Add a new client to your portfolio'}
+                </p>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone
-              </label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="+1 (555) 123-4567"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Company
-            </label>
-            <select
-              name="companyId"
-              value={formData.companyId}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+            <button 
+              onClick={onCancel} 
+              className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-all"
             >
-              <option value="">Select a company (optional)</option>
-              {companies.map(company => (
-                <option key={company.id} value={company.id}>
-                  {company.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Address
-            </label>
-            <input
-              type="text"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              placeholder="123 Main Street"
-            />
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                City
-              </label>
-              <input
-                type="text"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="New York"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                State
-              </label>
-              <input
-                type="text"
-                name="state"
-                value={formData.state}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="NY"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Zip Code
-              </label>
-              <input
-                type="text"
-                name="zipCode"
-                value={formData.zipCode}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                placeholder="10001"
-              />
-            </div>
-          </div>
-          <div className='grid grid-cols-2 gap-4'>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Country
-            </label>
-            <input
-              type="text"
-              name="country"
-              value={formData.country}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              placeholder="United States"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2"> 
-              Tax ID
-            </label>
-            <input
-              type="text"
-              name="taxId"
-              value={formData.taxId}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              placeholder="123456789"
-            />
-          </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Notes
-            </label>
-            <textarea
-              name="notes"
-              value={formData.notes}
-              onChange={handleChange}
-              rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-              placeholder="Additional notes about this client..."
-            />
-          </div>
-
-          <div className="flex gap-4">
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-            >
-              {loading ? 'Saving...' : client ? 'Update Client' : 'Create Client'}
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition font-medium"
-            >
-              Cancel
+              <X className="h-6 w-6" />
             </button>
           </div>
-        </form>
+        </div>
+
+        {/* Body */}
+        <div className="p-8">
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
+              <p className="text-sm text-red-700 font-medium">{error}</p>
+            </div>
+          )}
+
+          <div className="space-y-8">
+            {/* Basic Information */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <div className="h-1 w-1 bg-emerald-500 rounded-full"></div>
+                Basic Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <InputField
+                  icon={User}
+                  label="Client Name"
+                  name="name"
+                  required
+                  placeholder="John Doe"
+                />
+                <InputField
+                  icon={Briefcase}
+                  label="Legal Name"
+                  name="legalName"
+                  placeholder="Johnathan Doe LLC"
+                />
+              </div>
+            </div>
+
+            {/* Contact Information */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <div className="h-1 w-1 bg-emerald-500 rounded-full"></div>
+                Contact Details
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <InputField
+                  icon={Mail}
+                  label="Email Address"
+                  name="email"
+                  type="email"
+                  required
+                  placeholder="john@example.com"
+                />
+                <InputField
+                  icon={Phone}
+                  label="Phone Number"
+                  name="phone"
+                  type="tel"
+                  placeholder="+1 (555) 123-4567"
+                />
+                <SelectField
+                  icon={Building2}
+                  label="Associated Company"
+                  name="companyId"
+                  options={companies}
+                  placeholder="Select a company (optional)"
+                  colSpan={2}
+                />
+              </div>
+            </div>
+
+            {/* Address */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <div className="h-1 w-1 bg-emerald-500 rounded-full"></div>
+                Address
+              </h3>
+              <div className="grid grid-cols-1 gap-6">
+                <InputField
+                  icon={MapPin}
+                  label="Street Address"
+                  name="address"
+                  placeholder="123 Main Street"
+                  colSpan={2}
+                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <InputField
+                    icon={MapPin}
+                    label="City"
+                    name="city"
+                    placeholder="New York"
+                  />
+                  <InputField
+                    icon={MapPin}
+                    label="State / Province"
+                    name="state"
+                    placeholder="NY"
+                  />
+                  <InputField
+                    icon={MapPin}
+                    label="Zip / Postal Code"
+                    name="zipCode"
+                    placeholder="10001"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <InputField
+                    icon={Globe}
+                    label="Country"
+                    name="country"
+                    placeholder="United States"
+                  />
+                  <InputField
+                    icon={Hash}
+                    label="Tax ID / VAT Number"
+                    name="taxId"
+                    placeholder="123456789"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Additional Information */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <div className="h-1 w-1 bg-emerald-500 rounded-full"></div>
+                Additional Information
+              </h3>
+              <TextAreaField
+                icon={FileText}
+                label="Notes"
+                name="notes"
+                placeholder="Add any additional notes about this client..."
+                rows={4}
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-4 pt-6 border-t-2 border-gray-200">
+              <button
+                onClick={handleSubmit}
+                disabled={loading || !formData.name || !formData.email}
+                className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all duration-300"
+              >
+                {loading ? (
+                  <>
+                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    {client ? 'Updating...' : 'Creating...'}
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-5 w-5" />
+                    {client ? 'Update Client' : 'Create Client'}
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={onCancel}
+                disabled={loading}
+                className="px-8 py-3 border-2 border-gray-300 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -54,10 +54,8 @@ const createQuote = async (req, res) => {
         const itemsData = items.map((item, i) => ({
           quoteId: quote.id,
           position: i + 1,
-          title: item.title,
           description: item.description || "",
           quantity: item.quantity,
-          unit: item.unit,
           unitPrice: item.unitPrice,
           discountPct: item.discountPct || 0,
           taxRate: item.taxRate || 0,
@@ -104,6 +102,11 @@ const getQuotesByCompany = async (req, res) => {
         id: true,
         quoteNumber: true,
         description: true,
+        status: true,
+        total: true,
+        issueDate: true,
+        currency: true,
+        items: true,
       },
     });
     return res.status(200).json({ quotes });
@@ -167,10 +170,8 @@ const updateQuote = async (req, res) => {
       const itemsData = items.map((item, index) => ({
         quoteId,
         position: index + 1,
-        title: item.title,
         description: item.description || "",
         quantity: item.quantity,
-        unit: item.unit,
         unitPrice: item.unitPrice,
         discountPct: item.discountPct || 0,
         taxRate: item.taxRate || 0,

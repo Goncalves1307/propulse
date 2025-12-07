@@ -19,7 +19,6 @@ router.put('/:companyId/:quoteId',authMiddleware,membershipGuard,updateQuote)
 router.delete('/:companyId/:quoteId',authMiddleware,membershipGuard,deleteQuote)
 
 
-
 //client
 router.post("/:companyId/create", validate(clientCreateSchema), createClient);
 router.get("/:companyId", getClients);

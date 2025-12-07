@@ -136,10 +136,8 @@ model QuoteItem {
   quote       Quote    @relation(fields: [quoteId], references: [id])
   quoteId     String
   position    Int
-  title       String
   description String?
   quantity    Decimal
-  unit        String
   unitPrice   Decimal
   discountPct Decimal?
   taxRate     Decimal?

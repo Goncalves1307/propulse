@@ -1,24 +1,20 @@
 const z = require("zod");
 
 const quoteItemSchema = z.object({
-  title: z.string().min(1),
-  description: z.string().optional(),
-  quantity: z.number().positive(),
-  unit: z.string().min(1),
-  unitPrice: z.number().nonnegative(),
-  discountPct: z.number().min(0).max(100).optional(),
-  taxRate: z.number().min(0).max(100).optional(),
+  description: z.string().min(1, "Description is required"),
+  quantity: z.coerce.number().positive("Quantity must be greater than 0"),
+  unitPrice: z.coerce.number().nonnegative("Unit price must be 0 or more"),
 });
 
 const quoteCreateSchema = z.object({
   quoteNumber: z.string().optional(),
   currency: z.string().optional(),
   description: z.string().optional(),
-  discountAmount: z.number().nonnegative().optional(),
-  taxAmount: z.number().nonnegative().optional(),
+  discountAmount: z.coerce.number().nonnegative().optional(),
+  taxAmount: z.coerce.number().nonnegative().optional(),
   issueDate: z
     .string()
-    .datetime() 
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Issue date must be in format YYYY-MM-DD")
     .optional(),
   items: z.array(quoteItemSchema).min(1, "At least one item is required"),
 });
