@@ -6,6 +6,7 @@ import Login from "./pages/login";
 import Dashboard from "./pages/dashboard";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "../components/ProtectedRoute";
+import { Toaster } from 'react-hot-toast';
 function App(){
     const [loading, setLoading] = useState(true);
 
@@ -30,7 +31,9 @@ if (loading) {
     );
 }
 return (
+  
     <BrowserRouter>
+      <Toaster position="top-center" />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         {<Route path="/login" element={<Login />} />}

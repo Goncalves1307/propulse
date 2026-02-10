@@ -3,7 +3,14 @@ const jwt = require("jsonwebtoken");
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const saltRounds = 13;
-const z = require("zod");
+
+// Importar schemas
+const {
+  companyCreateSchema,
+  companyUpdateSchema,
+  memberCreateSchema,
+  memberRoleUpdateSchema,
+} = require("../validators/company");
 
 // --------------------
 // Utils
@@ -25,6 +32,16 @@ const generateSlug = async (name) => {
   }
 
   return slug;
+};
+
+// Formata erros do Zod para resposta amigável
+const formatZodErrors = (zodError) => {
+  const errors = {};
+  zodError.errors.forEach((err) => {
+    const field = err.path.join('.');
+    errors[field] = err.message;
+  });
+  return errors;
 };
 
 // --------------------
@@ -63,59 +80,30 @@ const assertCompanyAdmin = async (companyId, userId) => {
 };
 
 // --------------------
-// Zod schemas
-// --------------------
-const memberCreateSchema = z.object({
-  email: z
-    .string()
-    .trim()
-    .email("Invalid email"),
-  role: z
-    .enum(["USER", "ADMIN"])
-    .optional()
-    .default("USER"),
-});
-
-const memberRoleUpdateSchema = z.object({
-  role: z.enum(["USER", "ADMIN"]),
-});
-
-// --------------------
 // CREATE COMPANY
 // --------------------
 const createCompany = async (req, res) => {
-  const {
-    name,
-    description,
-    address,
-    city,
-    postalCode,
-    country,
-    phone,
-    email,
-    website,
-    taxId
-  } = req.body;
-
-  const user_id = req.user.id;
-  const slug = await generateSlug(name);
-
   try {
+    // Validação com Zod
+    const parsed = companyCreateSchema.safeParse(req.body);
+    
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation error",
+        errors: formatZodErrors(parsed.error),
+      });
+    }
+
+    const validData = parsed.data;
+    const user_id = req.user.id;
+    const slug = await generateSlug(validData.name);
+
     const result = await prisma.$transaction(async (tx) => {
       const company = await tx.company.create({
         data: {
-          name,
+          ...validData,
           ownerId: user_id,
           slug,
-          description,
-          address,
-          city,
-          postalCode,
-          country,
-          phone,
-          email,
-          website,
-          taxId
         }
       });
 
@@ -286,23 +274,21 @@ const deleteCompany = async (req, res) => {
 // --------------------
 const updateCompany = async (req, res) => {
   const { companyId } = req.params;
-
-  const {
-    name,
-    description,
-    address,
-    city,
-    postalCode,
-    country,
-    phone,
-    email,
-    website,
-    taxId
-  } = req.body;
-
   const userId = req.user.id;
 
   try {
+    // Validação com Zod
+    const parsed = companyUpdateSchema.safeParse(req.body);
+    
+    if (!parsed.success) {
+      return res.status(400).json({
+        message: "Validation error",
+        errors: formatZodErrors(parsed.error),
+      });
+    }
+
+    const validData = parsed.data;
+
     const company = await prisma.company.findFirst({
       where: { id: companyId, deletedAt: null }
     });
@@ -316,23 +302,14 @@ const updateCompany = async (req, res) => {
     }
 
     let slug = company.slug;
-    if (name && name !== company.name) {
-      slug = await generateSlug(name);
+    if (validData.name && validData.name !== company.name) {
+      slug = await generateSlug(validData.name);
     }
 
     const updatedCompany = await prisma.company.update({
       where: { id: companyId },
       data: {
-        name,
-        description,
-        address,
-        city,
-        postalCode,
-        country,
-        phone,
-        email,
-        website,
-        taxId,
+        ...validData,
         slug
       }
     });
@@ -406,7 +383,7 @@ const addCompanyMember = async (req, res) => {
     if (!parsed.success) {
       return res.status(400).json({
         message: "Validation error",
-        errors: parsed.error.flatten(),
+        errors: formatZodErrors(parsed.error),
       });
     }
 
@@ -486,7 +463,7 @@ const updateCompanyMemberRole = async (req, res) => {
     if (!parsed.success) {
       return res.status(400).json({
         message: "Validation error",
-        errors: parsed.error.flatten(),
+        errors: formatZodErrors(parsed.error),
       });
     }
 

@@ -1,58 +1,87 @@
 import React, { useState } from "react";
-import {
-  Calendar,
-  Building2,
-  Mail,
-  Lock,
-  Phone,
-  MapPin,
-  ArrowLeft,
-} from "lucide-react";
+import { Calendar, Mail, Lock, ArrowLeft, AlertCircle } from "lucide-react";
 import Api from "../../api/axios";
 import { useNavigate } from "react-router-dom";
 
 function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    setError("");
+    setLoading(true);
 
-    const res = await Api({
-      method: "post",
-      url: "/auth/login",
-      data: { email, password },
-    });
+    try {
+      const res = await Api({
+        method: "post",
+        url: "/auth/login",
+        data: { email, password },
+      });
 
-    localStorage.setItem("token", res.data.token);
-    navigate("/dashboard");
+      const token = res?.data?.token;
+      if (!token) {
+        setError("Resposta inválida do servidor. Tenta novamente.");
+        return;
+      }
+
+      localStorage.setItem("token", token);
+      navigate("/dashboard");
+    } catch (err) {
+      const status = err?.response?.status;
+      const apiMsg = err?.response?.data?.message;
+
+      if (status === 401 || status === 400) {
+        setError(apiMsg || "Email ou palavra-passe incorretos.");
+      } else {
+        setError(apiMsg || "Não foi possível iniciar sessão. Tenta novamente.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-white/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+      </div>
+      
+      <div className="max-w-md mx-auto relative z-10">
         <div className="text-center mb-8">
           <a
             href="/"
-            className="inline-flex items-center text-emerald-600 hover:text-emerald-500 mb-6"
+            className="inline-flex items-center text-white hover:text-white/80 mb-6 transition-all duration-300 hover:translate-x-[-4px]"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Voltar à página inicial
           </a>
           <div className="flex justify-center mb-4">
-            <Calendar className="h-12 w-12 text-emerald-600" />
+            <div className="bg-white/20 backdrop-blur-lg p-4 rounded-2xl shadow-2xl transform hover:scale-110 transition-transform duration-300">
+              <Calendar className="h-12 w-12 text-white" />
+            </div>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">
+          <h2 className="text-4xl font-bold text-white mb-2 drop-shadow-lg">
             Bem-vindo de volta
           </h2>
-          <p className="mt-2 text-gray-600">
+          <p className="mt-2 text-white/90 text-lg">
             Por favor, inicia sessão na tua conta
           </p>
         </div>
 
-        <div className="bg-white py-8 px-4 shadow-xl rounded-lg sm:px-10">
+        <div className="bg-white/95 backdrop-blur-xl py-8 px-4 shadow-2xl rounded-2xl sm:px-10 border border-white/20 transform hover:scale-[1.02] transition-transform duration-300">
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {error && (
+              <div className="flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <AlertCircle className="h-5 w-5 mt-0.5" />
+                <div>{error}</div>
+              </div>
+            )}
             <div>
               <label
                 htmlFor="email"
@@ -71,8 +100,11 @@ function Login() {
                   autoComplete="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (error) setError("");
+                  }}
+                  className="appearance-none block w-full px-3 py-3 pl-10 border-2 border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent sm:text-sm transition-all duration-300 hover:border-emerald-300"
                   placeholder="teu@email.com"
                 />
               </div>
@@ -96,8 +128,11 @@ function Login() {
                   autoComplete="current-password"
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-3 py-2 pl-10 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (error) setError("");
+                  }}
+                  className="appearance-none block w-full px-3 py-3 pl-10 border-2 border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent sm:text-sm transition-all duration-300 hover:border-emerald-300"
                   placeholder="••••••••"
                 />
               </div>
@@ -132,9 +167,12 @@ function Login() {
             <div>
               <button
                 type="submit"
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
+                disabled={loading}
+                className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-xl shadow-lg text-sm font-semibold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transform hover:scale-[1.02] transition-all duration-300 ${
+                  loading ? "opacity-70 cursor-not-allowed" : ""
+                }`}
               >
-                Iniciar sessão
+                {loading ? "A iniciar sessão..." : "Iniciar sessão"}
               </button>
             </div>
           </form>

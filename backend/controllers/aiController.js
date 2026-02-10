@@ -1,13 +1,13 @@
-// controllers/aiController.js
 const { PrismaClient } = require("@prisma/client");
 const { generateWithGemini } = require("../middleware/aiService");
 const prisma = new PrismaClient();
 
+// A função clean limpa espaços extras mas AGORA não destrói as quebras de linha (\n)
 function clean(str = "") {
-  return String(str).replace(/\s+/g, " ").trim();
+  return String(str).replace(/[ \t]+/g, " ").trim();
 }
 
-const MAX_ORIGINAL_CHARS = 12000; // safety cap for prompt size
+const MAX_ORIGINAL_CHARS = 12000;
 
 async function generateQuoteText(req, res) {
   const { companyId, clientId, quoteId } = req.params;
@@ -29,23 +29,27 @@ async function generateQuoteText(req, res) {
     }
 
     const prompt = `
-Gera um texto profissional de orçamento em PT-PT.
+Gera um texto profissional de apresentação de orçamento em PT-PT.
 
 Empresa: ${clean(company.name)}
 Cliente: ${clean(client.name)}
-
 Orçamento Nº: ${quote.quoteNumber || ""}
 Data: ${quote.issueDate || ""}
 Total: ${quote.total || ""} ${quote.currency || ""}
 
 Itens:
-${items.map(i => `- ${clean(i.title)}: ${i.quantity || 1} x ${i.unitPrice || 0} = ${i.lineTotal || 0}`).join("\n")}
+${items.map(i => `- ${clean(i.title || i.description)}: ${i.quantity || 1} x ${i.unitPrice || 0} = ${i.lineTotal || 0}`).join("\n")}
 
 Inclui:
 1. Uma introdução curta.
 2. Lista dos itens.
 3. Condições de pagamento (30 dias).
 4. Call to action.
+
+REGRAS MUITO IMPORTANTES:
+- NÃO USES formatação Markdown (não uses **, *, ou #).
+- Usa apenas texto simples (plain text).
+- Dá espaçamento real (duplo Enter) entre os parágrafos para ser fácil de ler.
     `;
 
     const aiResult = await generateWithGemini(prompt);
@@ -72,7 +76,7 @@ Inclui:
 
 const updateGeneratedQuote = async (req, res) => {
   const { quoteId, companyId } = req.params;
-  const updatedPrompt = req.body.text;
+  const updatedPrompt = req.body.text; // Isto deve ser um COMANDO (ex: "torna mais curto"), não o texto todo
 
   if (!updatedPrompt || !updatedPrompt.trim()) {
     return res.status(400).json({ error: "O campo 'text' é obrigatório." });
@@ -80,30 +84,21 @@ const updateGeneratedQuote = async (req, res) => {
 
   try {
     const quote = await prisma.quote.findFirst({
-      where: {
-        id: quoteId,
-        companyId: companyId
-      },
-      select: {
-        generatedText: true
-      }
+      where: { id: quoteId, companyId: companyId },
+      select: { generatedText: true }
     });
 
-    if (!quote) {
-      return res.status(404).json({ error: "Quote não encontrado ou não pertence à empresa." });
+    if (!quote || !quote.generatedText) {
+      return res.status(400).json({ error: "Orçamento não encontrado ou sem texto gerado." });
     }
 
-    if (!quote.generatedText) {
-      return res.status(400).json({ error: "Este orçamento ainda não tem texto gerado." });
-    }
-    let originalText = clean(quote.generatedText || "");
+    let originalText = quote.generatedText || ""; // Já NÃO usamos o clean() aqui para não destruir os Enters!
     let truncatedNote = "";
+    
     if (originalText.length > MAX_ORIGINAL_CHARS) {
       originalText = originalText.slice(0, MAX_ORIGINAL_CHARS);
       truncatedNote = "\n\n(Nota: o texto original foi truncado por tamanho.)";
     }
-
-    const changes = clean(updatedPrompt || "");
 
     const prompt = `
 A seguir está o texto original do orçamento, delimitado entre ===ORIGINAL=== e ===END===:
@@ -112,13 +107,14 @@ A seguir está o texto original do orçamento, delimitado entre ===ORIGINAL=== e
 ${originalText}
 ===END===
 
-Pedido de alteração:
-${changes}
+O utilizador pediu a seguinte alteração a este texto:
+"${updatedPrompt}"
 
 Instruções:
-- Aplica as alterações ao texto ORIGINAL e devolve apenas o texto final actualizado.
+- Aplica a alteração pedida ao texto ORIGINAL e devolve APENAS o texto final actualizado.
+- NÃO USES formatação Markdown (não uses **, *, ou #). Usa apenas texto simples.
 - Mantém PT-PT e um tom profissional.
-- Não expliques as alterações, não devolvas JSON, não peças mais informações.
+- Mantém as quebras de linha normais.
 ${truncatedNote}
 `;
 

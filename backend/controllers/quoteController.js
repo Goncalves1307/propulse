@@ -102,11 +102,13 @@ const getQuotesByCompany = async (req, res) => {
         id: true,
         quoteNumber: true,
         description: true,
+        clientId: true,
         status: true,
         total: true,
         issueDate: true,
         currency: true,
         items: true,
+        generatedText: true,
       },
     });
     return res.status(200).json({ quotes });
@@ -133,7 +135,7 @@ const getQuotesByID = async (req, res) => {
 };
 
 const updateQuote = async (req, res) => {
-  const { currency, items, description, discountAmount, taxAmount, status } = req.body;
+  const { currency, items, description, discountAmount, taxAmount, status , generatedText } = req.body;
   const { quoteId } = req.params;
 
   try {
@@ -162,6 +164,7 @@ const updateQuote = async (req, res) => {
           subtotal,
           total,
           status,
+          generatedText,
         },
       });
 

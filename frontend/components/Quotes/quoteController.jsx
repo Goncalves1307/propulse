@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
-import { FileText, Plus, Trash2, Edit, X, Building2, Calendar, DollarSign, Package, TrendingUp, Filter } from 'lucide-react';
+import { 
+  FileText, Plus, Trash2, Edit, X, Building2, Calendar, 
+  Package, TrendingUp, Filter, Brain, Loader2
+} from 'lucide-react';
 import API from '../../api/axios';
 import QuoteForm from './QuoteForm';
+
 
 function SkeletonCard() {
   return (
@@ -32,7 +36,7 @@ const statusConfig = {
   expired: { label: 'Expired', color: 'bg-orange-100 text-orange-700', icon: '⏰' },
 };
 
-export default function Quotes({ userId, selectedCompany, onClearCompany }) {
+export default function Quotes({ userId, selectedCompany, onClearCompany, selectedClient }) {
   const [quotes, setQuotes] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +44,9 @@ export default function Quotes({ userId, selectedCompany, onClearCompany }) {
   const [error, setError] = useState(null);
   const [editingQuote, setEditingQuote] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
+  
+  // Estado de loading apenas para a IA
+  const [aiLoading, setAiLoading] = useState(null);
 
   const companyId = selectedCompany?.id || null;
 
@@ -79,24 +86,100 @@ export default function Quotes({ userId, selectedCompany, onClearCompany }) {
     if (!confirm('Are you sure you want to delete this quote?')) return;
 
     try {
-      await API.delete(`/client/${companyId}/${id}`);
-      setQuotes(prev => prev.filter(q => q.id !== id));
+      await API.delete(`/client/${companyId}/quote/${id}`);
+      setQuotes(prev => prev.filter(q => q.id !== id && q._id !== id));
     } catch (err) {
       alert(err.message || 'Failed to delete');
     }
   };
 
-  const handleEdit = async (id, e) => {
+  const calculateTotal = (quote) => {
+    const itemsTotal = quote.items?.reduce((sum, item) => {
+      return sum + (parseFloat(item.unitPrice) || 0) * (parseFloat(item.quantity) || 0);
+    }, 0) || 0;
+    
+    const discount = parseFloat(quote.discountAmount) || 0;
+    const tax = parseFloat(quote.taxAmount) || 0;
+    
+    return itemsTotal - discount + tax;
+  };
+
+  // Função atualizada para gerar e mostrar o resumo diretamente no ecrã
+  const handleGenerateAISummary = async (quote, e) => {
     e.stopPropagation();
-    if (!companyId) return;
+    
+    const quoteId = quote.id || quote._id;
+    const clientId = quote.clientId || quote.client_id || quote.client?.id || selectedClient?.id || selectedClient?._id; 
+    
+    setAiLoading(quoteId);
 
     try {
-      const res = await API.get(`/client/${companyId}/${id}`);
-      const q = res.data.quote || res.data;
+      if (!clientId) {
+        throw new Error("Client ID is missing. The quote object doesn't have a valid client reference.");
+      }
+
+      const quoteContext = {
+        quoteNumber: quote.quoteNumber,
+        total: calculateTotal(quote),
+        currency: quote.currency,
+        items: (quote.items || []).map(i => `${i.quantity}x ${i.description}`),
+        clientName: selectedCompany?.name || "Client"
+      };
+
+      const payload = {
+        type: "summary", 
+        context: JSON.stringify(quoteContext),
+        prompt: `Create a professional summary for Quote #${quote.quoteNumber}.`
+      };
+
+      const response = await API.post(`/company/${companyId}/client/${clientId}/quote/${quoteId}/generate`, payload);
+      
+      // Assume-se que o teu backend já guarda isto na base de dados quando a rota /generate é chamada.
+      const text = response.data.text || response.data.generatedText || response.data.result || response.data.summary;
+      
+      // Atualiza o estado da lista de quotes instantaneamente para mostrar o texto gerado
+      setQuotes(prevQuotes => 
+        prevQuotes.map(q => 
+          (q.id === quoteId || q._id === quoteId) ? { ...q, generatedText: text } : q
+        )
+      );
+
+    } catch (err) {
+      console.error("AI Error:", err);
+      const msg = err.response?.data?.message || err.message || "Failed to generate summary.";
+      alert(msg);
+    } finally {
+      setAiLoading(null);
+    }
+  };
+
+  const handleEdit = async (id, e) => {
+    e.stopPropagation();
+
+    if (!companyId) {
+      alert("Company ID is missing");
+      return;
+    }
+    
+    if (!id) {
+      alert("Quote ID is undefined");
+      return;
+    }
+
+    try {
+      const res = await API.get(`/client/${companyId}/quote/${id}`);
+      const q = res.data.quote || res.data; 
+      
+      if (!q) {
+        throw new Error("Quote object is empty");
+      }
+
       setEditingQuote(q);
       setShowForm(true);
     } catch (err) {
-      alert('Failed to load quote data');
+      console.error("Erro ao carregar quote:", err);
+      const serverMessage = err.response?.data?.message || err.message;
+      alert(`Failed to load quote data: ${serverMessage}`);
     }
   };
 
@@ -129,17 +212,6 @@ export default function Quotes({ userId, selectedCompany, onClearCompany }) {
     );
   };
 
-  const calculateTotal = (quote) => {
-    const itemsTotal = quote.items?.reduce((sum, item) => {
-      return sum + (parseFloat(item.unitPrice) || 0) * (parseFloat(item.quantity) || 0);
-    }, 0) || 0;
-    
-    const discount = parseFloat(quote.discountAmount) || 0;
-    const tax = parseFloat(quote.taxAmount) || 0;
-    
-    return itemsTotal - discount + tax;
-  };
-
   if (!companyId && !showForm) {
     return (
       <div className="max-w-7xl mx-auto">
@@ -166,6 +238,7 @@ export default function Quotes({ userId, selectedCompany, onClearCompany }) {
         userId={userId}
         quote={editingQuote}
         companies={companies}
+        selectedClient={selectedClient}
         defaultCompany={selectedCompany}
         onSuccess={handleSuccess}
         onCancel={() => {
@@ -298,13 +371,13 @@ export default function Quotes({ userId, selectedCompany, onClearCompany }) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredQuotes.map(quote => (
             <div
-              key={quote.id}
-              className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-2xl transition-all duration-300 group relative overflow-hidden"
+              key={quote.id || quote._id}
+              className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 hover:shadow-2xl transition-all duration-300 group relative overflow-hidden flex flex-col"
             >
               {/* Gradient overlay on hover */}
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
               
-              <div className="relative">
+              <div className="relative flex-1 flex flex-col">
                 {/* Header */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3 flex-1">
@@ -324,14 +397,30 @@ export default function Quotes({ userId, selectedCompany, onClearCompany }) {
                   {/* Action Buttons */}
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                     <button
-                      onClick={(e) => handleEdit(quote.id, e)}
+                      onClick={(e) => handleGenerateAISummary(quote, e)}
+                      disabled={aiLoading === (quote.id || quote._id)}
+                      className={`p-2 rounded-lg transition-all relative group
+                        ${aiLoading === (quote.id || quote._id)
+                          ? 'bg-purple-100 text-purple-600 cursor-wait'
+                          : 'text-gray-400 hover:text-purple-600 hover:bg-purple-50'
+                        }`}
+                      title={quote.generatedText ? "Regenerate AI Summary" : "Generate AI Summary"}
+                    >
+                      {aiLoading === (quote.id || quote._id) ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Brain className="h-4 w-4" />
+                      )}
+                    </button>
+                    <button
+                      onClick={(e) => handleEdit(quote.id || quote._id, e)}
                       className="p-2 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
                       title="Edit quote"
                     >
                       <Edit className="h-4 w-4" />
                     </button>
                     <button
-                      onClick={(e) => handleDelete(quote.id, e)}
+                      onClick={(e) => handleDelete(quote.id || quote._id, e)}
                       className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                       title="Delete quote"
                     >
@@ -372,8 +461,27 @@ export default function Quotes({ userId, selectedCompany, onClearCompany }) {
                   </div>
                 )}
 
+                {/* --- AQUI ENTRA O TEXTO GERADO PELA IA --- */}
+                {quote.generatedText && (
+                  <div className="mb-4 p-4 bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl border border-violet-100 shadow-sm relative overflow-hidden group/ai">
+                    <div className="absolute top-0 right-0 p-2 opacity-10">
+                      <Brain className="h-12 w-12 text-violet-600" />
+                    </div>
+                    <div className="flex items-center gap-2 text-xs font-bold text-violet-700 mb-2 relative z-10">
+                      <Brain className="h-3.5 w-3.5" />
+                      AI Summary
+                    </div>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed relative z-10 line-clamp-4 group-hover/ai:line-clamp-none transition-all duration-300">
+                      {quote.generatedText}
+                    </p>
+                  </div>
+                )}
+
+                {/* Spacer to push footer to bottom if card stretches */}
+                <div className="flex-1"></div>
+
                 {/* Financial Summary */}
-                <div className="space-y-2 mb-4">
+                <div className="space-y-2 mb-4 mt-auto pt-4">
                   {(quote.discountAmount > 0 || quote.taxAmount > 0) && (
                     <div className="space-y-1 text-xs">
                       {quote.discountAmount > 0 && (

@@ -1,9 +1,22 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Trash2, FileText, Building2, User, Calendar, DollarSign, Package, Tag, Save, X } from 'lucide-react';
-import API from '../../api/axios';
+import { 
+  ArrowLeft, Plus, Trash2, FileText, Building2, User, 
+  Calendar, DollarSign, Package, Tag, Save, X, Brain 
+} from 'lucide-react';
+import API from "../../api/axios"
+import toast from 'react-hot-toast';
 
 function getInitialFormData(quoteProp, defaultCompany) {
   const q = quoteProp?.quote ?? quoteProp;
+
+  const formatDate = (dateString) => {
+    if (!dateString) return new Date().toISOString().split('T')[0];
+    try {
+      return new Date(dateString).toISOString().split('T')[0];
+    } catch (e) {
+      return new Date().toISOString().split('T')[0];
+    }
+  };
 
   return {
     quoteNumber: q?.quoteNumber || '',
@@ -12,12 +25,13 @@ function getInitialFormData(quoteProp, defaultCompany) {
     clientId: q?.clientId || '',
     status: q?.status || 'Draft',
     description: q?.description || '',
+    generatedText: q?.generatedText || '', 
     items: q?.items && q.items.length > 0
       ? q.items
       : [{ description: '', quantity: 1, unitPrice: 0 }],
     discountAmount: q?.discountAmount ?? 0,
     taxAmount: q?.taxAmount ?? 0,
-    issueDate: q?.issueDate || new Date().toISOString().split('T')[0],
+    issueDate: formatDate(q?.issueDate),
   };
 }
 
@@ -27,6 +41,57 @@ const statusConfig = {
   Accepted: { color: 'bg-emerald-100 text-emerald-700 border-emerald-300', icon: '✓' },
   Declined: { color: 'bg-red-100 text-red-700 border-red-300', icon: '✗' },
 };
+
+const SelectField = ({ icon: Icon, label, name, value, onChange, options, required = false, placeholder }) => (
+  <div className="group">
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      {label}
+      {required && <span className="text-red-500 ml-1">*</span>}
+    </label>
+    <div className="relative">
+      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors">
+        <Icon className="h-5 w-5" />
+      </div>
+      <select
+        name={name}
+        value={value}
+        onChange={onChange}
+        required={required}
+        className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 outline-none appearance-none bg-white"
+      >
+        {placeholder && <option value="">{placeholder}</option>}
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  </div>
+);
+
+const InputField = ({ icon: Icon, label, name, type = 'text', value, onChange, required = false, placeholder }) => (
+  <div className="group">
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      {label}
+      {required && <span className="text-red-500 ml-1">*</span>}
+    </label>
+    <div className="relative">
+      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors">
+        <Icon className="h-5 w-5" />
+      </div>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        required={required}
+        placeholder={placeholder}
+        className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 outline-none"
+      />
+    </div>
+  </div>
+);
 
 export default function QuoteForm({ userId, quote, companies, defaultCompany, onSuccess, onCancel }) {
   const [formData, setFormData] = useState(() => getInitialFormData(quote, defaultCompany));
@@ -45,7 +110,7 @@ export default function QuoteForm({ userId, quote, companies, defaultCompany, on
       setClients(response.data || []);
     } catch (err) {
       console.error('Failed to load clients:', err);
-      setClients([]);
+      setClients([]); 
     }
   };
 
@@ -61,6 +126,7 @@ export default function QuoteForm({ userId, quote, companies, defaultCompany, on
     }
   }, [formData.companyId]);
 
+  // Função handleSubmit limpa e consolidada!
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -74,6 +140,7 @@ export default function QuoteForm({ userId, quote, companies, defaultCompany, on
         clientId: formData.clientId,
         status: formData.status || 'Draft',
         description: formData.description,
+        generatedText: formData.generatedText, // Grava as edições manuais no Quote normal!
         items: formData.items.filter(item => item.description),
         discountAmount: parseFloat(formData.discountAmount) || 0,
         taxAmount: parseFloat(formData.taxAmount) || 0,
@@ -81,14 +148,16 @@ export default function QuoteForm({ userId, quote, companies, defaultCompany, on
       };
 
       if (quote?.id) {
-        await API.put(`/client/${defaultCompany.id}/${quote.id}`, payload);
+        await API.put(`/client/${formData.companyId}/quote/${quote.id}`, payload);
       } else {
-        await API.post(`/client/${defaultCompany.id}/${formData.clientId}/quote`, { ...payload, userId });
+        await API.post(`/client/${formData.companyId}/${formData.clientId}/quote`, { ...payload, userId });
       }
 
       onSuccess();
+      toast.success('Orçamento guardado com sucesso!');
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Failed to save quote');
+      console.error("Submit Error:", err);
+      toast.error(err.response?.data?.message || 'Falha ao guardar o orçamento.');
     } finally {
       setLoading(false);
     }
@@ -134,57 +203,6 @@ export default function QuoteForm({ userId, quote, companies, defaultCompany, on
     const tax = parseFloat(formData.taxAmount) || 0;
     return subtotal - discount + tax;
   };
-
-  const SelectField = ({ icon: Icon, label, name, value, onChange, options, required = false, placeholder }) => (
-    <div className="group">
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-      </label>
-      <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors">
-          <Icon className="h-5 w-5" />
-        </div>
-        <select
-          name={name}
-          value={value}
-          onChange={onChange}
-          required={required}
-          className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 outline-none appearance-none bg-white"
-        >
-          {placeholder && <option value="">{placeholder}</option>}
-          {options.map(opt => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-
-  const InputField = ({ icon: Icon, label, name, type = 'text', value, onChange, required = false, placeholder }) => (
-    <div className="group">
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-      </label>
-      <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors">
-          <Icon className="h-5 w-5" />
-        </div>
-        <input
-          type={type}
-          name={name}
-          value={value}
-          onChange={onChange}
-          required={required}
-          placeholder={placeholder}
-          className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 outline-none"
-        />
-      </div>
-    </div>
-  );
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -291,13 +309,13 @@ export default function QuoteForm({ userId, quote, companies, defaultCompany, on
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <SelectField
                   icon={Building2}
-                  label="Company"
+                  label="Associated Company"
                   name="companyId"
                   value={formData.companyId}
                   onChange={handleChange}
-                  required
-                  placeholder="Select a company"
                   options={companies.map(c => ({ value: c.id, label: c.name }))}
+                  placeholder="Select a company"
+                  required
                 />
                 <SelectField
                   icon={User}
@@ -339,6 +357,25 @@ export default function QuoteForm({ userId, quote, companies, defaultCompany, on
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 outline-none"
                 placeholder="Enter a brief description of this quote..."
               />
+            </div>
+
+            {/* --- BLOCO DO RESUMO IA --- */}
+            <div className="bg-gradient-to-br from-violet-50 to-purple-50 p-6 rounded-xl border border-violet-100">
+              <h3 className="text-lg font-semibold text-violet-900 mb-4 flex items-center gap-2">
+                <Brain className="h-5 w-5 text-violet-600" />
+                AI Summary
+              </h3>
+              <textarea
+                name="generatedText"
+                value={formData.generatedText?.replace(/\\n/g, '\n') || ''}
+                onChange={handleChange}
+                rows={5}
+                className="w-full px-4 py-3 border border-violet-200 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all duration-200 outline-none bg-white text-gray-700"
+                placeholder="Generate an AI summary from the quotes dashboard, or type/edit your custom summary here..."
+              />
+              <p className="text-xs text-violet-600 mt-2">
+                This text will be displayed in the quote card. You can edit the AI's output here manually.
+              </p>
             </div>
 
             {/* Items */}

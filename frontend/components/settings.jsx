@@ -7,7 +7,7 @@ export default function Setting({ userId }) {
   const [success, setSuccess] = useState(null);
 
   const [profileData, setProfileData] = useState({
-    name: 'John Doe',
+    name: '',
     email: 'john@example.com',
     phone: '+1 (555) 123-4567',
     company: 'Acme Corporation',
@@ -26,13 +26,6 @@ export default function Setting({ userId }) {
     pushNotifications: false,
   });
 
-  const [preferences, setPreferences] = useState({
-    language: 'en',
-    timezone: 'America/New_York',
-    currency: 'USD',
-    theme: 'light',
-  });
-
   const handleSave = async () => {
     setLoading(true);
     setTimeout(() => {
@@ -45,8 +38,6 @@ export default function Setting({ userId }) {
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'security', label: 'Security', icon: Shield },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'preferences', label: 'Preferences', icon: Globe },
   ];
 
   const InputField = ({ icon: Icon, label, name, type = 'text', value, onChange, placeholder }) => (
@@ -205,78 +196,6 @@ export default function Setting({ userId }) {
                       className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all">
                       {loading ? <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Save className="h-5 w-5" />}
                       Update Password
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'notifications' && (
-              <div>
-                <div className="bg-gradient-to-r from-blue-500 to-cyan-500 px-8 py-6">
-                  <h2 className="text-2xl font-bold text-white">Notifications</h2>
-                  <p className="text-blue-50 text-sm mt-1">Choose what you receive</p>
-                </div>
-                <div className="p-8 space-y-6">
-                  <div className="bg-gray-50 rounded-xl p-4">
-                    <ToggleSwitch label="New Quotes" description="Notifications for new quotes"
-                      checked={notifications.emailQuotes}
-                      onChange={(val) => setNotifications({ ...notifications, emailQuotes: val })} />
-                    <ToggleSwitch label="New Invoices" description="Notifications for invoices"
-                      checked={notifications.emailInvoices}
-                      onChange={(val) => setNotifications({ ...notifications, emailInvoices: val })} />
-                    <ToggleSwitch label="Payments" description="Payment status updates"
-                      checked={notifications.emailPayments}
-                      onChange={(val) => setNotifications({ ...notifications, emailPayments: val })} />
-                    <ToggleSwitch label="Push Notifications" description="Mobile notifications"
-                      checked={notifications.pushNotifications}
-                      onChange={(val) => setNotifications({ ...notifications, pushNotifications: val })} />
-                  </div>
-
-                  <div className="flex justify-end pt-4 border-t">
-                    <button onClick={handleSave} disabled={loading}
-                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all">
-                      {loading ? <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Save className="h-5 w-5" />}
-                      Save Preferences
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'preferences' && (
-              <div>
-                <div className="bg-gradient-to-r from-orange-500 to-pink-500 px-8 py-6">
-                  <h2 className="text-2xl font-bold text-white">Preferences</h2>
-                  <p className="text-orange-50 text-sm mt-1">Customize your experience</p>
-                </div>
-                <div className="p-8 space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Language</label>
-                      <select value={preferences.language} onChange={(e) => setPreferences({ ...preferences, language: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none">
-                        <option value="en">English</option>
-                        <option value="es">Español</option>
-                        <option value="pt">Português</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Currency</label>
-                      <select value={preferences.currency} onChange={(e) => setPreferences({ ...preferences, currency: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none">
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
-                        <option value="GBP">GBP</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-4 border-t">
-                    <button onClick={handleSave} disabled={loading}
-                      className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all">
-                      {loading ? <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Save className="h-5 w-5" />}
-                      Save Preferences
                     </button>
                   </div>
                 </div>

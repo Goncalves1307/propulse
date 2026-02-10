@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { UserRound, Plus, Trash2, Edit, Mail, Phone, Building2, MapPin, FileText, Calendar } from 'lucide-react';
 import API from '../../api/axios';
-import ClientForm from './ClientForm';
+import ClientForm from './clientForm';
+import { useNavigate } from 'react-router-dom';
+import Quotes from '../Quotes/quoteController';
+
 
 function SkeletonCard() {
   return (
@@ -44,13 +47,15 @@ function getAvatarColor(name) {
   return colors[index];
 }
 
-export default function Clients({ userId, selectedCompany }) {
+export default function Clients({ userId, selectedCompany , onCreateQuote}) {
   const [clients, setClients] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState(null);
   const [editingClient, setEditingClient] = useState(null);
+  const navigate = useNavigate();
+  
 
   const fetchCompanies = async () => {
     try {
@@ -80,7 +85,7 @@ export default function Clients({ userId, selectedCompany }) {
     if (!confirm('Are you sure you want to delete this client?')) return;
 
     try {
-      await API.delete(`/clients/${id}`);
+      await API.delete(`/client/${selectedCompany?.id}/client/${id}`);
       setClients(prev => prev.filter(c => c.id !== id));
     } catch (err) {
       alert(err.message || 'Failed to delete client');
@@ -125,11 +130,13 @@ export default function Clients({ userId, selectedCompany }) {
           setEditingClient(null);
           setShowForm(false);
         }}
+        selectedCompany={selectedCompany}
       />
     );
   }
 
   return (
+    
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -325,6 +332,18 @@ export default function Clients({ userId, selectedCompany }) {
                     )}
                   </div>
                 </div>
+                {client && (
+                  <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onCreateQuote) {
+                      onCreateQuote(client);
+                    }
+                  }}
+                  className="w-full py-2 text-sm font-medium text-emerald-600 hover:text-white hover:bg-gradient-to-r hover:from-emerald-500 hover:to-teal-500 rounded-lg border border-emerald-200 hover:border-transparent transition-all duration-300">
+                    Create Quote →
+                    </button>
+                  )}
               </div>
             </div>
           ))}

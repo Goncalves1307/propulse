@@ -2,6 +2,28 @@ import { useState, useEffect } from 'react';
 import { Building2, Save, X, MapPin, Mail, Phone, Globe, Hash } from 'lucide-react';
 import API from '../../api/axios';
 
+const InputField = ({ icon: Icon, label, name, type = 'text', required = false, placeholder, value, onChange }) => (
+  <div className="group">
+    <label className="block text-sm font-medium text-gray-700 mb-2">
+      {label}
+      {required && <span className="text-red-500 ml-1">*</span>}
+    </label>
+    <div className="relative">
+      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors">
+        <Icon className="h-5 w-5" />
+      </div>
+      <input
+        type={type}
+        name={name}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 outline-none"
+      />
+    </div>
+  </div>
+);
+
 export default function CompanyForm({ userId, company, onSuccess, onCancel }) {
   const [formData, setFormData] = useState({
     name: '',
@@ -14,6 +36,12 @@ export default function CompanyForm({ userId, company, onSuccess, onCancel }) {
     website: '',
     tax_id: '',
   });
+
+  const prettifyField = (field) => {
+  return field
+    .replace(/_/g, " ")         // troca underscores por espaços
+    .replace(/\b\w/g, (c) => c.toUpperCase()); // capitaliza cada palavra
+};
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -65,10 +93,13 @@ export default function CompanyForm({ userId, company, onSuccess, onCancel }) {
         taxId: formData.tax_id,
       };
 
+
       if (company) {
         await API.put(`/company/${company.id}`, payload);
+        console.log('Update:', payload);
       } else {
         await API.post('/company/create', payload);
+        console.log('Create:', payload);
       }
 
       setSuccess(true);
@@ -76,38 +107,30 @@ export default function CompanyForm({ userId, company, onSuccess, onCancel }) {
         setTimeout(() => onSuccess(), 1500);
       }
     } catch (err) {
-      const message =
-        err?.response?.data?.detail ||
-        err?.message ||
-        'Failed to save company';
+      const status = err?.response?.status;
+      const data = err?.response?.data;
+
+      let message = 'Failed to save company';
+
+      if (status === 422 && data?.fields && typeof data.fields === 'object') {
+        const lines = Object.entries(data.fields).map(([field, msgs]) => {
+          const text = Array.isArray(msgs) ? msgs.join(', ') : String(msgs);
+          return `${prettifyField(field)}: ${text}`;
+        });
+
+        message = lines.join('\n');
+      } else if (data?.message) {
+        message = data.message;
+      } else if (err.message) {
+        message = err.message;
+      }
+
       setError(message);
       console.error('Error saving company:', err);
     } finally {
       setLoading(false);
     }
   };
-
-  const InputField = ({ icon: Icon, label, name, type = 'text', required = false, placeholder }) => (
-    <div className="group">
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-      </label>
-      <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-emerald-500 transition-colors">
-          <Icon className="h-5 w-5" />
-        </div>
-        <input
-          type={type}
-          name={name}
-          value={formData[name]}
-          onChange={handleChange}
-          placeholder={placeholder}
-          className="w-full pl-11 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200 outline-none"
-        />
-      </div>
-    </div>
-  );
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -144,7 +167,7 @@ export default function CompanyForm({ userId, company, onSuccess, onCancel }) {
           {/* Messages */}
           {error && (
             <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
-              <p className="text-sm text-red-700 font-medium">{error}</p>
+              <p className="text-sm text-red-700 font-medium whitespace-pre-line">{error}</p>
             </div>
           )}
 
@@ -168,6 +191,8 @@ export default function CompanyForm({ userId, company, onSuccess, onCancel }) {
                   name="name"
                   required
                   placeholder="e.g., Acme Corporation"
+                  value={formData.name}
+                  onChange={handleChange}
                 />
               </div>
             </div>
@@ -185,6 +210,8 @@ export default function CompanyForm({ userId, company, onSuccess, onCancel }) {
                     label="Street Address"
                     name="address"
                     placeholder="123 Business Street"
+                    value={formData.address}
+                    onChange={handleChange}
                   />
                 </div>
                 <InputField
@@ -192,12 +219,16 @@ export default function CompanyForm({ userId, company, onSuccess, onCancel }) {
                   label="City"
                   name="city"
                   placeholder="San Francisco"
+                  value={formData.city}
+                  onChange={handleChange}
                 />
                 <InputField
                   icon={MapPin}
                   label="Postal Code"
                   name="postal_code"
                   placeholder="94102"
+                  value={formData.postal_code}
+                  onChange={handleChange}
                 />
                 <div className="md:col-span-2">
                   <InputField
@@ -205,6 +236,8 @@ export default function CompanyForm({ userId, company, onSuccess, onCancel }) {
                     label="Country"
                     name="country"
                     placeholder="United States"
+                    value={formData.country}
+                    onChange={handleChange}
                   />
                 </div>
               </div>
@@ -223,6 +256,8 @@ export default function CompanyForm({ userId, company, onSuccess, onCancel }) {
                   name="phone"
                   type="tel"
                   placeholder="+1 (555) 123-4567"
+                  value={formData.phone}
+                  onChange={handleChange}
                 />
                 <InputField
                   icon={Mail}
@@ -230,6 +265,8 @@ export default function CompanyForm({ userId, company, onSuccess, onCancel }) {
                   name="email"
                   type="email"
                   placeholder="contact@company.com"
+                  value={formData.email}
+                  onChange={handleChange}
                 />
                 <InputField
                   icon={Globe}
@@ -237,12 +274,16 @@ export default function CompanyForm({ userId, company, onSuccess, onCancel }) {
                   name="website"
                   type="url"
                   placeholder="https://www.company.com"
+                  value={formData.website}
+                  onChange={handleChange}
                 />
                 <InputField
                   icon={Hash}
                   label="Tax ID / VAT Number"
                   name="tax_id"
                   placeholder="123-45-6789"
+                  value={formData.tax_id}
+                  onChange={handleChange}
                 />
               </div>
             </div>
@@ -283,3 +324,4 @@ export default function CompanyForm({ userId, company, onSuccess, onCancel }) {
     </div>
   );
 }
+  

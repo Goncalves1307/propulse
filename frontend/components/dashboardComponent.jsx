@@ -36,6 +36,8 @@ function DashboardComponent({ selectedCompany, onCreateQuote, onAddClient, onVie
         },
       });
       setQuotes(response.data.quotes || []);
+
+      console.log(quotes);
     } catch (error) {
       console.error("Error fetching quotes:", error);
     }

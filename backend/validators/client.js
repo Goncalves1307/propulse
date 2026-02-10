@@ -1,8 +1,8 @@
-const z = require("zod");
+const { z } = require("zod");
 
 const emptyToUndefined = (schema) =>
   z
-    .union([schema, z.literal("")]) // aceita valor válido OU string vazia
+    .union([schema, z.literal("")])
     .transform((val) => (val === "" ? undefined : val));
 
 const clientCreateSchema = z.object({
@@ -20,6 +20,17 @@ const clientCreateSchema = z.object({
       .trim()
       .max(30, "Phone must have at most 30 characters")
       .regex(/^[0-9+\-\s]+$/, "Invalid phone format")
+  ),
+
+  taxId: z.string()
+  .trim()
+  .min(9, "Tax ID is required")
+  .max(9, "Tax ID must have at most 9 characters"),
+
+  legalName: emptyToUndefined(
+    z.string()
+      .trim()
+      .max(120, "Legal name must have at most 120 characters")
   ),
 
   address: emptyToUndefined(
@@ -59,4 +70,10 @@ const clientCreateSchema = z.object({
   ),
 });
 
-module.exports = clientCreateSchema;
+// Update schema: all fields optional
+const clientUpdateSchema = clientCreateSchema.partial();
+
+module.exports = {
+  clientCreateSchema,
+  clientUpdateSchema,
+};
