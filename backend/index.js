@@ -10,7 +10,10 @@ const PORT = process.env.PORT || 4000;
 const app = express()
 
 // Middlewares de base
-app.use(cors());
+app.use(cors({
+  origin: 'https://propulse-zeta.vercel.app', 
+  credentials: true
+}));
 app.use(express.json());
 app.use(requestId);
 
@@ -30,4 +33,5 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   if (!process.env.JWT_SECRET) { throw new Error("JWT_SECRET não definido") }
   console.log(`Servidor a correr em http://localhost:${PORT}`);
+
 })
